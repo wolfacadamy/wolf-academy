@@ -14,7 +14,19 @@
             <div class="card-title">{{ cd.course.title }}</div>
             <div class="card-desc">{{ cd.course.description or 'No description' }}</div>
 
-            <div class="progress-bar-container">
+            {% if cd.is_expired %}
+            <div style="margin-top:0.75rem;">
+                <span class="badge" style="background:rgba(239, 68, 68, 0.15); color:var(--red); border: 1px solid rgba(239, 68, 68, 0.3);">
+                    🔒 Expired / منتهية الصلاحية
+                </span>
+            </div>
+            {% else %}
+            <div style="margin-top:0.75rem; font-size: 0.85rem; color: var(--gold-dim);">
+                ⏳ Expires: {{ cd.expires_at.strftime('%Y-%m-%d') }}
+            </div>
+            {% endif %}
+
+            <div class="progress-bar-container" style="margin-top: 1rem;">
                 <div class="progress-bar-fill" style="width: {{ cd.progress }}%;"></div>
             </div>
             <div class="progress-text">{{ cd.completed }}/{{ cd.total }} modules completed · {{ cd.progress }}%</div>
@@ -24,7 +36,7 @@
                 {% set is_passed = module.id in cd.passed_ids %}
                 {% set idx = loop.index0 %}
                 {% set prev_passed = (idx == 0) or (cd.modules[idx-1].id in cd.passed_ids) %}
-                {% set is_locked = not is_passed and not prev_passed %}
+                {% set is_locked = cd.is_expired or (not is_passed and not prev_passed) %}
 
                 <li class="module-item {{ 'completed' if is_passed else ('locked' if is_locked else '') }}">
                     {% if not is_locked and not is_passed %}
@@ -39,6 +51,8 @@
                         <div class="module-meta">
                             {% if is_passed %}
                                 <span class="badge badge-pass">✓ Passed</span>
+                            {% elif cd.is_expired %}
+                                🔒 Course Expired
                             {% elif is_locked %}
                                 🔒 Locked — pass previous module first
                             {% else %}

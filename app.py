@@ -1,4 +1,5 @@
 import math
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from collections import defaultdict
 
@@ -495,6 +496,8 @@ def create_app():
     def employee_dashboard():
         enrollments = Enrollment.query.filter_by(user_id=current_user.id).all()
         courses_data = []
+        now = datetime.now(timezone.utc)
+        
         for enrollment in enrollments:
             course = enrollment.course
             modules = sorted(course.modules, key=lambda m: m.order_index)
@@ -502,6 +505,15 @@ def create_app():
             passed_ids = get_module_progress(current_user.id, course)
             completed = len(passed_ids)
             progress = math.floor((completed / total) * 100) if total > 0 else 0
+            
+            # Expiration logic (5 days)
+            enrolled_at = enrollment.enrolled_at
+            if enrolled_at.tzinfo is None:
+                enrolled_at = enrolled_at.replace(tzinfo=timezone.utc)
+            
+            expires_at = enrolled_at + timedelta(days=5)
+            is_expired = now > expires_at
+            
             courses_data.append({
                 "course": course,
                 "modules": modules,
@@ -509,8 +521,11 @@ def create_app():
                 "completed": completed,
                 "progress": progress,
                 "passed_ids": passed_ids,
+                "is_expired": is_expired,
+                "enrolled_at": enrolled_at,
+                "expires_at": expires_at,
             })
-        return render_template("employee/dashboard.html", courses_data=courses_data)
+        return render_template("employee/dashboard.html", courses_data=courses_data, now=now)
 
     # ── Employee: Module View (Read Lesson + Take Quiz) ──────────────
 
@@ -526,6 +541,15 @@ def create_app():
         ).first()
         if not enrollment:
             abort(403)
+            
+        # Check expiration
+        enrolled_at = enrollment.enrolled_at
+        if enrolled_at.tzinfo is None:
+            enrolled_at = enrolled_at.replace(tzinfo=timezone.utc)
+            
+        if datetime.now(timezone.utc) > enrolled_at + timedelta(days=5):
+            flash("This course has expired. Please contact your administrator to renew access.", "warning")
+            return redirect(url_for("employee_dashboard"))
 
         # Check sequential access
         if not can_access_module(current_user.id, module):
