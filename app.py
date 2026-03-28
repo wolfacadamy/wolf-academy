@@ -606,7 +606,16 @@ def create_app():
 
         questions = Question.query.filter_by(module_id=module.id).all()
         if not questions:
-            flash("This module has no quiz questions yet.", "warning")
+            # If no questions, automatically pass the module
+            attempt = QuizAttempt(
+                user_id=current_user.id,
+                module_id=module.id,
+                score=100,
+                passed=True,
+            )
+            db.session.add(attempt)
+            db.session.commit()
+            flash("Module marked as complete!", "success")
             return redirect(url_for("employee_module", module_id=module.id))
 
         # Grade the quiz

@@ -102,8 +102,9 @@ def add_course():
             
         db.session.commit()
 
-        print("Adding Questions to the final module...")
-        target_mod_id = module_objects[-1].id
+        db.session.commit()
+
+        print("Adding Questions...")
 
         questions_data = [
             {
@@ -188,7 +189,11 @@ def add_course():
             }
         ]
 
-        for q in questions_data:
+        for idx, q in enumerate(questions_data):
+            # assign 2 questions per module
+            module_idx = idx // 2
+            target_mod_id = module_objects[module_idx].id
+            
             question = Question(
                 module_id=target_mod_id,
                 question_text=q['text'],

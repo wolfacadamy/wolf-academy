@@ -95,10 +95,22 @@
     </div>
     {% else %}
     <div class="quiz-section">
-        <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <p>No quiz questions have been added to this module yet.</p>
+        {% if best_attempt and best_attempt.passed %}
+        <div class="alert alert-success">
+            <strong>✓ Module Completed</strong>
+            <p style="margin-top:0.5rem; font-size:0.9rem;">You have successfully completed this lesson.</p>
         </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">✓</div>
+            <p style="margin-bottom: 1.5rem;">There is no quiz for this module. Click below to mark it as complete and continue.</p>
+            <form method="POST" action="{{ url_for('employee_submit_quiz', module_id=module.id) }}">
+                <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 1.1rem; border-radius: 8px;">
+                    Mark Complete →
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
