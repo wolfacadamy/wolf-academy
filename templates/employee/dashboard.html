@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}My Courses — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📚 My Courses</h1>
+    </div>
+
+    {% if courses_data %}
+    <div class="card-grid">
+        {% for cd in courses_data %}
+        <div class="card">
+            <div class="card-title">{{ cd.course.title }}</div>
+            <div class="card-desc">{{ cd.course.description or 'No description' }}</div>
+
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: {{ cd.progress }}%;"></div>
+            </div>
+            <div class="progress-text">{{ cd.completed }}/{{ cd.total }} modules completed · {{ cd.progress }}%</div>
+
+            <ul class="module-list" style="margin-top:1rem;">
+                {% for module in cd.modules %}
+                {% set is_passed = module.id in cd.passed_ids %}
+                {% set idx = loop.index0 %}
+                {% set prev_passed = (idx == 0) or (cd.modules[idx-1].id in cd.passed_ids) %}
+                {% set is_locked = not is_passed and not prev_passed %}
+
+                <li class="module-item {{ 'completed' if is_passed else ('locked' if is_locked else '') }}">
+                    {% if not is_locked and not is_passed %}
+                    <a href="{{ url_for('employee_module', module_id=module.id) }}" style="display:flex;align-items:center;gap:1rem;width:100%;color:inherit;text-decoration:none;">
+                    {% endif %}
+
+                    <div class="module-icon">
+                        {% if is_passed %}✓{% else %}{{ loop.index }}{% endif %}
+                    </div>
+                    <div class="module-info">
+                        <h4>{{ module.title }}</h4>
+                        <div class="module-meta">
+                            {% if is_passed %}
+                                <span class="badge badge-pass">✓ Passed</span>
+                            {% elif is_locked %}
+                                🔒 Locked — pass previous module first
+                            {% else %}
+                                Ready to start
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if not is_locked and not is_passed %}
+                    </a>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>You have no courses assigned yet. Contact your administrator to get enrolled.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }} — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-code">{{ code }}</div>
+    <div class="error-message">{{ message }}</div>
+    <br>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to Home</a>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Quiz Result — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+    <div class="breadcrumb">
+        <a href="{{ url_for('employee_dashboard') }}">My Courses</a>
+        <span class="sep">›</span>
+        <span>{{ course.title }}</span>
+        <span class="sep">›</span>
+        <span>{{ module.title }}</span>
+        <span class="sep">›</span>
+        <span>Result</span>
+    </div>
+
+    <div class="result-container">
+        <div class="result-score {{ 'pass' if passed else 'fail' }}">{{ score }}%</div>
+        <div class="result-label {{ 'pass' if passed else 'fail' }}">
+            {% if passed %}🎉 Congratulations, You Passed!{% else %}😔 Not Quite — Try Again{% endif %}
+        </div>
+        <div class="result-detail">
+            You got {{ correct }} out of {{ total }} questions correct.
+            {% if not passed %}You need 70% to pass.{% endif %}
+        </div>
+
+        <div class="result-actions">
+            {% if passed and next_module %}
+                <a href="{{ url_for('employee_module', module_id=next_module.id) }}" class="btn btn-primary">
+                    Continue to Next Module →
+                </a>
+            {% elif passed and not next_module %}
+                <a href="{{ url_for('employee_dashboard') }}" class="btn btn-primary">
+                    🎉 Course Complete — Back to Dashboard
+                </a>
+            {% else %}
+                <a href="{{ url_for('employee_module', module_id=module.id) }}" class="btn btn-primary">
+                    Retake Quiz
+                </a>
+            {% endif %}
+            <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary">← Back to Courses</a>
+        </div>
+    </div>
+
+    <!-- Answer Breakdown -->
+    <div class="result-breakdown">
+        <div class="section-title">Answer Breakdown</div>
+        {% for r in results %}
+        <div class="result-question {{ 'correct' if r.is_correct else 'incorrect' }}">
+            <div class="q-header">
+                <span class="icon">{{ '✅' if r.is_correct else '❌' }}</span>
+                <span>{{ r.question.question_text }}</span>
+            </div>
+            <div style="font-size:0.85rem;color:var(--text-muted);margin-top:0.3rem;">
+                Your answer:
+                <strong style="color:{{ 'var(--green)' if r.is_correct else 'var(--red)' }};">
+                    {{ r.selected|upper or '—' }})
+                    {% if r.selected == 'a' %}{{ r.question.option_a }}
+                    {% elif r.selected == 'b' %}{{ r.question.option_b }}
+                    {% elif r.selected == 'c' %}{{ r.question.option_c }}
+                    {% elif r.selected == 'd' %}{{ r.question.option_d }}
+                    {% else %}No answer{% endif %}
+                </strong>
+                {% if not r.is_correct %}
+                <br>Correct answer:
+                <strong style="color:var(--green);">
+                    {{ r.question.correct_option|upper }})
+                    {% if r.question.correct_option == 'a' %}{{ r.question.option_a }}
+                    {% elif r.question.correct_option == 'b' %}{{ r.question.option_b }}
+                    {% elif r.question.correct_option == 'c' %}{{ r.question.option_c }}
+                    {% else %}{{ r.question.option_d }}{% endif %}
+                </strong>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

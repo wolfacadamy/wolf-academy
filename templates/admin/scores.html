@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Results Tracker — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📈 Results Tracker</h1>
+        <div style="display:flex;align-items:center;gap:1.5rem;">
+            <div style="text-align:center;">
+                <div style="font-size:1.6rem;font-weight:700;color:var(--gold);font-family:'Playfair Display',serif;">{{ pass_rate }}%</div>
+                <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Overall Pass Rate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav" style="display:flex;gap:0;margin-bottom:2rem;border-bottom:2px solid var(--border);">
+        <button class="tab-btn active" onclick="switchTab('overview', this)" style="padding:0.75rem 1.5rem;background:none;border:none;border-bottom:2px solid var(--gold);margin-bottom:-2px;color:var(--gold);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Inter',sans-serif;">
+            📊 Course Overview
+        </button>
+        <button class="tab-btn" onclick="switchTab('history', this)" style="padding:0.75rem 1.5rem;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text-muted);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Inter',sans-serif;">
+            📋 Detailed History
+        </button>
+    </div>
+
+    <!-- Tab 1: Course Overview -->
+    <div id="tab-overview" class="tab-content">
+        {% if overview %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Course</th>
+                        <th>Progress</th>
+                        <th>Avg Best Score</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in overview %}
+                    <tr>
+                        <td><strong>{{ row.user.username }}</strong></td>
+                        <td>{{ row.course.title }}</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:0.75rem;">
+                                <div class="progress-bar-container" style="flex:1;max-width:120px;">
+                                    <div class="progress-bar-fill" style="width:{{ row.progress }}%;"></div>
+                                </div>
+                                <span style="font-size:0.85rem;color:var(--text-muted);">{{ row.completed }}/{{ row.total }}</span>
+                            </div>
+                        </td>
+                        <td><strong>{{ row.best_avg }}%</strong></td>
+                        <td>
+                            {% if row.status == 'Completed' %}
+                            <span class="badge badge-pass">✓ Completed</span>
+                            {% elif row.status == 'In Progress' %}
+                            <span class="badge badge-pending">◉ In Progress</span>
+                            {% elif row.status == 'No Content' %}
+                            <span class="badge" style="background:var(--bg-input);color:var(--text-muted);">— No Content</span>
+                            {% else %}
+                            <span class="badge" style="background:var(--bg-input);color:var(--text-muted);">○ Not Started</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <p>No enrollments yet. Enroll employees in courses to track their progress.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Tab 2: Detailed History -->
+    <div id="tab-history" class="tab-content" style="display:none;">
+        {% if attempts %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Course</th>
+                        <th>Module</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in attempts %}
+                    <tr>
+                        <td><strong>{{ a.user.username }}</strong></td>
+                        <td>{{ a.module.course.title }}</td>
+                        <td>{{ a.module.title }}</td>
+                        <td><strong>{{ a.score }}%</strong></td>
+                        <td>
+                            {% if a.passed %}
+                            <span class="badge badge-pass">✓ Passed</span>
+                            {% else %}
+                            <span class="badge badge-fail">✗ Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ a.taken_at.strftime('%b %d, %Y %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No quiz attempts yet. Scores will appear here once employees take quizzes.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function switchTab(tabName, btn) {
+    // Hide all tab content
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    // Reset all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.style.borderBottomColor = 'transparent';
+        el.style.color = 'var(--text-muted)';
+        el.classList.remove('active');
+    });
+    // Show target tab
+    document.getElementById('tab-' + tabName).style.display = 'block';
+    btn.style.borderBottomColor = 'var(--gold)';
+    btn.style.color = 'var(--gold)';
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}

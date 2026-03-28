@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Employees — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>👥 Employees</h1>
+        <a href="{{ url_for('admin_create_employee') }}" class="btn btn-primary">+ Add Employee</a>
+    </div>
+
+    {% if employees %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Joined</th>
+                    <th style="text-align:center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td><strong>{{ emp.username }}</strong></td>
+                    <td>{{ emp.email }}</td>
+                    <td>{{ emp.created_at.strftime('%b %d, %Y') }}</td>
+                    <td style="text-align:center;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleReset({{ emp.id }})" title="Reset Password">🔑 Reset Password</button>
+                    </td>
+                </tr>
+                <tr id="reset-row-{{ emp.id }}" style="display:none;">
+                    <td colspan="4" style="padding:0.75rem 1rem;background:var(--bg-card);">
+                        <form action="{{ url_for('admin_reset_password', user_id=emp.id) }}" method="POST" style="display:flex;align-items:center;gap:0.75rem;margin:0;">
+                            <span style="color:var(--text-secondary);font-size:0.85rem;white-space:nowrap;">New password for <strong>{{ emp.username }}</strong>:</span>
+                            <input type="password" name="new_password" class="form-control" placeholder="Enter new password" required minlength="4" style="max-width:240px;margin:0;">
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleReset({{ emp.id }})">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">👤</div>
+        <p>No employees registered yet.</p>
+        <a href="{{ url_for('admin_create_employee') }}" class="btn btn-primary">+ Add Employee</a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleReset(empId) {
+    const row = document.getElementById('reset-row-' + empId);
+    if (row.style.display === 'none') {
+        // Close all other open reset rows first
+        document.querySelectorAll('[id^="reset-row-"]').forEach(r => r.style.display = 'none');
+        row.style.display = 'table-row';
+        row.querySelector('input[name="new_password"]').focus();
+    } else {
+        row.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}
