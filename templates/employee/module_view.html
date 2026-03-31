@@ -21,16 +21,19 @@
         {{ content_html|safe }}
     </div>
 
-    <!-- Module Completion Section -->
+    <!-- Quiz Section -->
+    {% if questions %}
     <div class="quiz-section">
-        {% if completed %}
+        <h2>📝 Module Quiz</h2>
+
+        {% if best_attempt and best_attempt.passed %}
         <div class="card" style="border-color:rgba(62,207,142,0.3);background:var(--green-bg);margin-bottom:1.5rem;">
             <div style="display:flex;align-items:center;gap:0.75rem;">
                 <span style="font-size:1.5rem;">✅</span>
                 <div>
-                    <strong style="color:var(--green);">Module Completed!</strong>
+                    <strong style="color:var(--green);">You passed this quiz!</strong>
                     <p style="color:var(--text-secondary);font-size:0.9rem;margin:0;">
-                        You have read this lesson.
+                        Best score: {{ best_attempt.score }}%
                     </p>
                 </div>
             </div>
@@ -39,19 +42,77 @@
                 Continue to Next Module →
             </a>
             {% else %}
-            <a href="{{ url_for('employee_course_quiz', course_id=course.id) }}" class="btn btn-primary" style="margin-top:1rem;">
-                Proceed to Course Quiz →
-            </a>
+            <p style="color:var(--green);margin-top:1rem;font-weight:600;">
+                🎉 You've completed all modules in this course!
+            </p>
             {% endif %}
         </div>
-        {% else %}
-        <form method="POST" action="{{ url_for('employee_complete_module', module_id=module.id) }}">
-            <button type="submit" class="btn btn-primary btn-block" style="padding:1rem;font-size:1.1rem;margin-top:2rem;">
-                ✓ Mark as Read & Continue
+
+        <details style="margin-top:1rem;">
+            <summary style="cursor:pointer;color:var(--text-muted);font-size:0.9rem;">Retake quiz anyway</summary>
+            <div style="margin-top:1rem;">
+        {% endif %}
+
+        <p style="color:var(--text-secondary);margin-bottom:1.5rem;">
+            Answer all questions below. You need <strong>70%</strong> or higher to pass.
+        </p>
+
+        <form id="quiz-form" method="POST" action="{{ url_for('employee_submit_quiz', module_id=module.id) }}">
+            {% for q in questions %}
+            <div class="question-card">
+                <div class="q-number">Question {{ loop.index }} of {{ questions|length }}</div>
+                <div class="q-text">{{ q.question_text }}</div>
+                <div class="option-group">
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="a">
+                        <span><strong>A.</strong> {{ q.option_a }}</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="b">
+                        <span><strong>B.</strong> {{ q.option_b }}</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="c">
+                        <span><strong>C.</strong> {{ q.option_c }}</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="d">
+                        <span><strong>D.</strong> {{ q.option_d }}</span>
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:1rem;">
+                Submit Quiz →
             </button>
         </form>
+
+        {% if best_attempt and best_attempt.passed %}
+            </div>
+        </details>
         {% endif %}
     </div>
+    {% else %}
+    <div class="quiz-section">
+        {% if best_attempt and best_attempt.passed %}
+        <div class="alert alert-success">
+            <strong>✓ Module Completed</strong>
+            <p style="margin-top:0.5rem; font-size:0.9rem;">You have successfully completed this lesson.</p>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">✓</div>
+            <p style="margin-bottom: 1.5rem;">There is no quiz for this module. Click below to mark it as complete and continue.</p>
+            <form method="POST" action="{{ url_for('employee_submit_quiz', module_id=module.id) }}">
+                <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 1.1rem; border-radius: 8px;">
+                    Mark Complete →
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <div style="margin-top:2rem;">
         <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary">← Back to My Courses</a>

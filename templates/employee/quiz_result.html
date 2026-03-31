@@ -8,7 +8,9 @@
         <span class="sep">›</span>
         <span>{{ course.title }}</span>
         <span class="sep">›</span>
-        <span>Course Quiz Result</span>
+        <span>{{ module.title }}</span>
+        <span class="sep">›</span>
+        <span>Result</span>
     </div>
 
     <div class="result-container">
@@ -22,12 +24,16 @@
         </div>
 
         <div class="result-actions">
-            {% if passed %}
+            {% if passed and next_module %}
+                <a href="{{ url_for('employee_module', module_id=next_module.id) }}" class="btn btn-primary">
+                    Continue to Next Module →
+                </a>
+            {% elif passed and not next_module %}
                 <a href="{{ url_for('employee_dashboard') }}" class="btn btn-primary">
                     🎉 Course Complete — Back to Dashboard
                 </a>
             {% else %}
-                <a href="{{ url_for('employee_course_quiz', course_id=course.id) }}" class="btn btn-primary">
+                <a href="{{ url_for('employee_module', module_id=module.id) }}" class="btn btn-primary">
                     Retake Quiz
                 </a>
             {% endif %}

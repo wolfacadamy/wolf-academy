@@ -1,4 +1,5 @@
 import math
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from collections import defaultdict
 
@@ -11,7 +12,7 @@ from flask_login import (
 )
 
 from config import Config
-from models import db, User, Course, Module, Question, QuizAttempt, Enrollment, ModuleCompletion
+from models import db, User, Course, Module, Question, QuizAttempt, Enrollment
 from email_service import send_invite_email
 
 
@@ -42,11 +43,11 @@ def employee_required(f):
 def get_module_progress(user_id, course):
     """Return set of module IDs the user has passed for the given course."""
     passed_ids = set()
-    completions = ModuleCompletion.query.filter_by(user_id=user_id).all()
+    attempts = QuizAttempt.query.filter_by(user_id=user_id).all()
     module_ids = {m.id for m in course.modules}
-    for c in completions:
-        if c.module_id in module_ids:
-            passed_ids.add(c.module_id)
+    for a in attempts:
+        if a.module_id in module_ids and a.passed:
+            passed_ids.add(a.module_id)
     return passed_ids
 
 
@@ -61,8 +62,8 @@ def can_access_module(user_id, module):
         return True  # first module always accessible
     prev_module = ordered_modules[idx - 1]
     best = (
-        ModuleCompletion.query
-        .filter_by(user_id=user_id, module_id=prev_module.id)
+        QuizAttempt.query
+        .filter_by(user_id=user_id, module_id=prev_module.id, passed=True)
         .first()
     )
     return best is not None
@@ -175,6 +176,21 @@ def create_app():
             return redirect(url_for("admin_employees"))
 
         return render_template("admin/employee_form.html")
+
+    @app.route("/admin/employees/<int:user_id>/reset-password", methods=["POST"])
+    @admin_required
+    def admin_reset_password(user_id):
+        user = User.query.get_or_404(user_id)
+        if user.role != "employee":
+            abort(403)
+        new_password = request.form.get("new_password", "").strip()
+        if not new_password or len(new_password) < 4:
+            flash("Password must be at least 4 characters.", "danger")
+            return redirect(url_for("admin_employees"))
+        user.set_password(new_password)
+        db.session.commit()
+        flash(f"Password reset for '{user.username}' successfully.", "success")
+        return redirect(url_for("admin_employees"))
 
     # ── Admin: Courses CRUD ──────────────────────────────────────────
 
@@ -345,10 +361,10 @@ def create_app():
 
     # ── Admin: Quiz Questions CRUD ───────────────────────────────────
 
-    @app.route("/admin/courses/<int:course_id>/quiz", methods=["GET", "POST"])
+    @app.route("/admin/modules/<int:module_id>/quiz", methods=["GET", "POST"])
     @admin_required
-    def admin_quiz(course_id):
-        course = Course.query.get_or_404(course_id)
+    def admin_quiz(module_id):
+        module = Module.query.get_or_404(module_id)
         if request.method == "POST":
             question_text = request.form.get("question_text", "").strip()
             option_a = request.form.get("option_a", "").strip()
@@ -363,7 +379,7 @@ def create_app():
                 flash("Correct option must be a, b, c, or d.", "danger")
             else:
                 q = Question(
-                    course_id=course.id,
+                    module_id=module.id,
                     question_text=question_text,
                     option_a=option_a,
                     option_b=option_b,
@@ -374,20 +390,20 @@ def create_app():
                 db.session.add(q)
                 db.session.commit()
                 flash("Question added!", "success")
-            return redirect(url_for("admin_quiz", course_id=course.id))
+            return redirect(url_for("admin_quiz", module_id=module.id))
 
-        questions = Question.query.filter_by(course_id=course.id).all()
-        return render_template("admin/quiz_form.html", course=course, questions=questions)
+        questions = Question.query.filter_by(module_id=module.id).all()
+        return render_template("admin/quiz_form.html", module=module, questions=questions)
 
     @app.route("/admin/questions/<int:question_id>/delete", methods=["POST"])
     @admin_required
     def admin_delete_question(question_id):
         q = Question.query.get_or_404(question_id)
-        course_id = q.course_id
+        module_id = q.module_id
         db.session.delete(q)
         db.session.commit()
         flash("Question deleted.", "info")
-        return redirect(url_for("admin_quiz", course_id=course_id))
+        return redirect(url_for("admin_quiz", module_id=module_id))
 
     # ── Admin: Results Tracker ────────────────────────────────────────
 
@@ -398,6 +414,7 @@ def create_app():
         attempts = (
             QuizAttempt.query
             .join(User)
+            .join(Module)
             .join(Course)
             .order_by(QuizAttempt.taken_at.desc())
             .all()
@@ -424,27 +441,29 @@ def create_app():
                 })
                 continue
 
-            # Check modules completed by user
-            module_ids = [m.id for m in modules]
-            if module_ids:
-                completed = ModuleCompletion.query.filter_by(user_id=user.id).filter(ModuleCompletion.module_id.in_(module_ids)).count()
-            else:
-                completed = 0
+            # Count passed modules (best attempt per module)
+            completed = 0
+            score_sum = 0
+            scored_count = 0
+            for module in modules:
+                best = (
+                    QuizAttempt.query
+                    .filter_by(user_id=user.id, module_id=module.id)
+                    .order_by(QuizAttempt.score.desc())
+                    .first()
+                )
+                if best:
+                    score_sum += best.score
+                    scored_count += 1
+                    if best.passed:
+                        completed += 1
 
-            # Get best quiz attempt for course
-            best_course_attempt = (
-                QuizAttempt.query
-                .filter_by(user_id=user.id, course_id=course.id)
-                .order_by(QuizAttempt.score.desc())
-                .first()
-            )
+            progress = math.floor((completed / total_modules) * 100)
+            best_avg = round(score_sum / scored_count) if scored_count > 0 else 0
 
-            progress = math.floor((completed / total_modules) * 100) if total_modules > 0 else 0
-            best_avg = best_course_attempt.score if best_course_attempt else 0
-
-            if best_course_attempt and best_course_attempt.passed:
+            if completed == total_modules:
                 status = "Completed"
-            elif completed > 0 or best_course_attempt:
+            elif scored_count > 0:
                 status = "In Progress"
             else:
                 status = "Not Started"
@@ -477,6 +496,8 @@ def create_app():
     def employee_dashboard():
         enrollments = Enrollment.query.filter_by(user_id=current_user.id).all()
         courses_data = []
+        now = datetime.now(timezone.utc)
+        
         for enrollment in enrollments:
             course = enrollment.course
             modules = sorted(course.modules, key=lambda m: m.order_index)
@@ -485,8 +506,14 @@ def create_app():
             completed = len(passed_ids)
             progress = math.floor((completed / total) * 100) if total > 0 else 0
             
-            best_attempt = QuizAttempt.query.filter_by(user_id=current_user.id, course_id=course.id).order_by(QuizAttempt.score.desc()).first()
-
+            # Expiration logic (5 days)
+            enrolled_at = enrollment.enrolled_at
+            if enrolled_at.tzinfo is None:
+                enrolled_at = enrolled_at.replace(tzinfo=timezone.utc)
+            
+            expires_at = enrolled_at + timedelta(days=5)
+            is_expired = now > expires_at
+            
             courses_data.append({
                 "course": course,
                 "modules": modules,
@@ -494,9 +521,11 @@ def create_app():
                 "completed": completed,
                 "progress": progress,
                 "passed_ids": passed_ids,
-                "best_attempt": best_attempt,
+                "is_expired": is_expired,
+                "enrolled_at": enrolled_at,
+                "expires_at": expires_at,
             })
-        return render_template("employee/dashboard.html", courses_data=courses_data)
+        return render_template("employee/dashboard.html", courses_data=courses_data, now=now)
 
     # ── Employee: Module View (Read Lesson + Take Quiz) ──────────────
 
@@ -512,6 +541,15 @@ def create_app():
         ).first()
         if not enrollment:
             abort(403)
+            
+        # Check expiration
+        enrolled_at = enrollment.enrolled_at
+        if enrolled_at.tzinfo is None:
+            enrolled_at = enrolled_at.replace(tzinfo=timezone.utc)
+            
+        if datetime.now(timezone.utc) > enrolled_at + timedelta(days=5):
+            flash("This course has expired. Please contact your administrator to renew access.", "warning")
+            return redirect(url_for("employee_dashboard"))
 
         # Check sequential access
         if not can_access_module(current_user.id, module):
@@ -522,10 +560,15 @@ def create_app():
             module.content_md,
             extras=["fenced-code-blocks", "tables", "strike", "task_list"]
         )
+        questions = Question.query.filter_by(module_id=module.id).all()
 
-        completed = ModuleCompletion.query.filter_by(
-            user_id=current_user.id, module_id=module.id
-        ).first() is not None
+        # Get best attempt for this module
+        best_attempt = (
+            QuizAttempt.query
+            .filter_by(user_id=current_user.id, module_id=module.id)
+            .order_by(QuizAttempt.score.desc())
+            .first()
+        )
 
         # Find next module
         ordered_modules = sorted(course.modules, key=lambda m: m.order_index)
@@ -537,78 +580,45 @@ def create_app():
             module=module,
             course=course,
             content_html=content_html,
-            completed=completed,
+            questions=questions,
+            best_attempt=best_attempt,
             next_module=next_module,
         )
 
-    # ── Employee: Submit Quiz / Complete Module ────────────────────
+    # ── Employee: Submit Quiz ────────────────────────────────────────
 
-    @app.route("/module/<int:module_id>/complete", methods=["POST"])
+    @app.route("/module/<int:module_id>/submit", methods=["POST"])
     @employee_required
-    def employee_complete_module(module_id):
+    def employee_submit_quiz(module_id):
         module = Module.query.get_or_404(module_id)
-        
-        # Check permissions
+        course = module.course
+
+        # Verify enrollment
+        enrollment = Enrollment.query.filter_by(
+            user_id=current_user.id, course_id=course.id
+        ).first()
+        if not enrollment:
+            abort(403)
+
+        # Verify access
         if not can_access_module(current_user.id, module):
             abort(403)
-            
-        existing = ModuleCompletion.query.filter_by(user_id=current_user.id, module_id=module.id).first()
-        if not existing:
-            mc = ModuleCompletion(user_id=current_user.id, module_id=module.id)
-            db.session.add(mc)
-            db.session.commit()
-            
-        # Find next module
-        course = module.course
-        ordered_modules = sorted(course.modules, key=lambda m: m.order_index)
-        idx = next((i for i, m in enumerate(ordered_modules) if m.id == module.id), None)
-        next_module = ordered_modules[idx + 1] if idx is not None and idx + 1 < len(ordered_modules) else None
 
-        if next_module:
-            return redirect(url_for("employee_module", module_id=next_module.id))
-        else:
-            return redirect(url_for("employee_course_quiz", course_id=course.id))
-
-    @app.route("/course/<int:course_id>/quiz", methods=["GET"])
-    @employee_required
-    def employee_course_quiz(course_id):
-        course = Course.query.get_or_404(course_id)
-        enrollment = Enrollment.query.filter_by(user_id=current_user.id, course_id=course_id).first()
-        if not enrollment:
-            abort(403)
-
-        passed_ids = get_module_progress(current_user.id, course)
-        if len(passed_ids) < len(course.modules):
-            flash("You must complete all modules before taking the final quiz.", "warning")
-            return redirect(url_for("employee_dashboard"))
-
-        questions = Question.query.filter_by(course_id=course_id).all()
-        best_attempt = QuizAttempt.query.filter_by(user_id=current_user.id, course_id=course_id).order_by(QuizAttempt.score.desc()).first()
-
-        return render_template(
-            "employee/course_quiz.html",
-            course=course,
-            questions=questions,
-            best_attempt=best_attempt,
-        )
-
-    @app.route("/course/<int:course_id>/quiz/submit", methods=["POST"])
-    @employee_required
-    def employee_submit_course_quiz(course_id):
-        course = Course.query.get_or_404(course_id)
-        enrollment = Enrollment.query.filter_by(user_id=current_user.id, course_id=course_id).first()
-        if not enrollment:
-            abort(403)
-
-        passed_ids = get_module_progress(current_user.id, course)
-        if len(passed_ids) < len(course.modules):
-            abort(403)
-
-        questions = Question.query.filter_by(course_id=course_id).all()
+        questions = Question.query.filter_by(module_id=module.id).all()
         if not questions:
-            flash("This course has no quiz questions.", "warning")
-            return redirect(url_for("employee_dashboard"))
+            # If no questions, automatically pass the module
+            attempt = QuizAttempt(
+                user_id=current_user.id,
+                module_id=module.id,
+                score=100,
+                passed=True,
+            )
+            db.session.add(attempt)
+            db.session.commit()
+            flash("Module marked as complete!", "success")
+            return redirect(url_for("employee_module", module_id=module.id))
 
+        # Grade the quiz
         correct = 0
         total = len(questions)
         results = []
@@ -627,18 +637,31 @@ def create_app():
         score = math.floor((correct / total) * 100) if total > 0 else 0
         passed = score >= Config.PASS_THRESHOLD
 
-        attempt = QuizAttempt(user_id=current_user.id, course_id=course_id, score=score, passed=passed)
+        # Store attempt
+        attempt = QuizAttempt(
+            user_id=current_user.id,
+            module_id=module.id,
+            score=score,
+            passed=passed,
+        )
         db.session.add(attempt)
         db.session.commit()
 
+        # Find next module
+        ordered_modules = sorted(course.modules, key=lambda m: m.order_index)
+        idx = next((i for i, m in enumerate(ordered_modules) if m.id == module.id), None)
+        next_module = ordered_modules[idx + 1] if idx is not None and idx + 1 < len(ordered_modules) else None
+
         return render_template(
             "employee/quiz_result.html",
+            module=module,
             course=course,
             score=score,
             passed=passed,
             correct=correct,
             total=total,
             results=results,
+            next_module=next_module,
         )
 
     # ── Error Handlers ───────────────────────────────────────────────

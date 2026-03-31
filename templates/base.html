@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,7 @@
     {% if current_user.is_authenticated %}
     <nav class="navbar">
         <a href="{{ url_for('index') }}" class="navbar-brand">
-            <span class="icon">🐺</span> Wolf Academy
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Wolf Academy" style="height:44px;width:auto;">
         </a>
         <ul class="navbar-links">
             {% if current_user.role == 'admin' %}

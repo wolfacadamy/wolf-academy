@@ -14,27 +14,32 @@
             <div class="card-title">{{ cd.course.title }}</div>
             <div class="card-desc">{{ cd.course.description or 'No description' }}</div>
 
-            <div class="progress-bar-container">
+            {% if cd.is_expired %}
+            <div style="margin-top:0.75rem;">
+                <span class="badge" style="background:rgba(239, 68, 68, 0.15); color:var(--red); border: 1px solid rgba(239, 68, 68, 0.3);">
+                    🔒 Expired / منتهية الصلاحية
+                </span>
+            </div>
+            {% else %}
+            <div style="margin-top:0.75rem; font-size: 0.85rem; color: var(--gold-dim);">
+                ⏳ Expires: {{ cd.expires_at.strftime('%Y-%m-%d') }}
+            </div>
+            {% endif %}
+
+            <div class="progress-bar-container" style="margin-top: 1rem;">
                 <div class="progress-bar-fill" style="width: {{ cd.progress }}%;"></div>
             </div>
-            <div class="progress-text">
-                {{ cd.completed }}/{{ cd.total }} modules read
-                {% if cd.best_attempt and cd.best_attempt.passed %}
-                    · <strong style="color:var(--green);">Course Passed! ({{ cd.best_attempt.score }}%)</strong>
-                {% else %}
-                    · {{ cd.progress }}%
-                {% endif %}
-            </div>
+            <div class="progress-text">{{ cd.completed }}/{{ cd.total }} modules completed · {{ cd.progress }}%</div>
 
             <ul class="module-list" style="margin-top:1rem;">
                 {% for module in cd.modules %}
                 {% set is_passed = module.id in cd.passed_ids %}
                 {% set idx = loop.index0 %}
                 {% set prev_passed = (idx == 0) or (cd.modules[idx-1].id in cd.passed_ids) %}
-                {% set is_locked = not is_passed and not prev_passed %}
+                {% set is_locked = cd.is_expired or (not is_passed and not prev_passed) %}
 
                 <li class="module-item {{ 'completed' if is_passed else ('locked' if is_locked else '') }}">
-                    {% if not is_locked %}
+                    {% if not is_locked and not is_passed %}
                     <a href="{{ url_for('employee_module', module_id=module.id) }}" style="display:flex;align-items:center;gap:1rem;width:100%;color:inherit;text-decoration:none;">
                     {% endif %}
 
@@ -45,29 +50,23 @@
                         <h4>{{ module.title }}</h4>
                         <div class="module-meta">
                             {% if is_passed %}
-                                <span class="badge badge-pass">✓ Read</span>
+                                <span class="badge badge-pass">✓ Passed</span>
+                            {% elif cd.is_expired %}
+                                🔒 Course Expired
                             {% elif is_locked %}
-                                🔒 Locked — read previous module first
+                                🔒 Locked — pass previous module first
                             {% else %}
                                 Ready to start
                             {% endif %}
                         </div>
                     </div>
 
-                    {% if not is_locked %}
+                    {% if not is_locked and not is_passed %}
                     </a>
                     {% endif %}
                 </li>
                 {% endfor %}
             </ul>
-
-            {% if cd.completed == cd.total and cd.total > 0 %}
-            <div style="margin-top:1.5rem;text-align:center;">
-                <a href="{{ url_for('employee_course_quiz', course_id=cd.course.id) }}" class="btn btn-primary" style="width:100%;">
-                    {% if cd.best_attempt and cd.best_attempt.passed %}Retake{% else %}Take{% endif %} Final Course Quiz
-                </a>
-            </div>
-            {% endif %}
         </div>
         {% endfor %}
     </div>

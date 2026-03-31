@@ -21,7 +21,6 @@ class User(UserMixin, db.Model):
     created_courses = db.relationship("Course", backref="creator", lazy=True)
     enrollments = db.relationship("Enrollment", backref="user", lazy=True)
     quiz_attempts = db.relationship("QuizAttempt", backref="user", lazy=True)
-    module_completions = db.relationship("ModuleCompletion", backref="user", lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -51,12 +50,6 @@ class Course(db.Model):
     enrollments = db.relationship(
         "Enrollment", backref="course", lazy=True, cascade="all, delete-orphan"
     )
-    questions = db.relationship(
-        "Question", backref="course", lazy=True, cascade="all, delete-orphan"
-    )
-    quiz_attempts = db.relationship(
-        "QuizAttempt", backref="course", lazy=True, cascade="all, delete-orphan"
-    )
 
     def __repr__(self):
         return f"<Course {self.title}>"
@@ -73,8 +66,11 @@ class Module(db.Model):
     order_index = db.Column(db.Integer, nullable=False, default=0)
 
     # relationships
-    completions = db.relationship(
-        "ModuleCompletion", backref="module", lazy=True, cascade="all, delete-orphan"
+    questions = db.relationship(
+        "Question", backref="module", lazy=True, cascade="all, delete-orphan"
+    )
+    quiz_attempts = db.relationship(
+        "QuizAttempt", backref="module", lazy=True, cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -86,7 +82,7 @@ class Question(db.Model):
     __tablename__ = "questions"
 
     id = db.Column(db.Integer, primary_key=True)
-    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey("modules.id"), nullable=False)
     question_text = db.Column(db.Text, nullable=False)
     option_a = db.Column(db.String(500), nullable=False)
     option_b = db.Column(db.String(500), nullable=False)
@@ -95,7 +91,7 @@ class Question(db.Model):
     correct_option = db.Column(db.String(1), nullable=False)  # a, b, c, or d
 
     def __repr__(self):
-        return f"<Question {self.id} for Course {self.course_id}>"
+        return f"<Question {self.id} for Module {self.module_id}>"
 
 
 # ── Quiz Attempts ────────────────────────────────────────────────────────
@@ -104,30 +100,13 @@ class QuizAttempt(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey("modules.id"), nullable=False)
     score = db.Column(db.Integer, nullable=False, default=0)  # percentage 0-100
     passed = db.Column(db.Boolean, nullable=False, default=False)
     taken_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
-        return f"<QuizAttempt user={self.user_id} course={self.course_id} score={self.score}>"
-
-
-# ── Module Completions ───────────────────────────────────────────────────
-class ModuleCompletion(db.Model):
-    __tablename__ = "module_completions"
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    module_id = db.Column(db.Integer, db.ForeignKey("modules.id"), nullable=False)
-    completed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
-    __table_args__ = (
-        db.UniqueConstraint("user_id", "module_id", name="unique_module_completion"),
-    )
-
-    def __repr__(self):
-        return f"<ModuleCompletion user={self.user_id} module={self.module_id}>"
+        return f"<QuizAttempt user={self.user_id} module={self.module_id} score={self.score}>"
 
 
 # ── Enrollments ──────────────────────────────────────────────────────────

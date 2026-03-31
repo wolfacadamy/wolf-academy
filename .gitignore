@@ -1,0 +1,10 @@
+# Wolf Academy LMS - Git Ignore
+__pycache__/
+*.pyc
+*.pyo
+venv/
+instance/
+.env
+lms.db
+lms_copy.db
+*.zip

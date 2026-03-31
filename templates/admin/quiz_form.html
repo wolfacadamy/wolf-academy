@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Quiz — {{ course.title }} — Wolf Academy{% endblock %}
+{% block title %}Quiz — {{ module.title }} — Wolf Academy{% endblock %}
 
 {% block content %}
 <div class="container-narrow">
     <div class="breadcrumb">
         <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
         <span class="sep">›</span>
-        <a href="{{ url_for('admin_course_detail', course_id=course.id) }}">{{ course.title }}</a>
+        <a href="{{ url_for('admin_course_detail', course_id=module.course.id) }}">{{ module.course.title }}</a>
         <span class="sep">›</span>
-        <span>Quiz</span>
+        <span>{{ module.title }} — Quiz</span>
     </div>
 
-    <h1>📝 Quiz: {{ course.title }}</h1>
+    <h1>📝 Quiz: {{ module.title }}</h1>
     <p style="color:var(--text-secondary);margin-top:0.3rem;margin-bottom:2rem;">
-        Add multiple-choice questions for this course's quiz. Employees need 70% to pass.
+        Add multiple-choice questions for this module's quiz. Employees need 70% to pass.
     </p>
 
     <!-- Existing Questions -->
@@ -82,7 +82,7 @@
     </form>
 
     <div style="margin-top:2rem;">
-        <a href="{{ url_for('admin_course_detail', course_id=course.id) }}" class="btn btn-secondary">← Back to Course</a>
+        <a href="{{ url_for('admin_course_detail', course_id=module.course.id) }}" class="btn btn-secondary">← Back to Course</a>
     </div>
 </div>
 {% endblock %}
