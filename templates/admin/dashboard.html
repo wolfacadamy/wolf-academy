@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📊 Dashboard</h1>
+        <div style="display:flex;gap:0.75rem;">
+            <a href="{{ url_for('admin_scores') }}" class="btn btn-secondary">📈 Results Tracker</a>
+            <a href="{{ url_for('admin_create_course') }}" class="btn btn-primary">+ New Course</a>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_courses }}</div>
+            <div class="stat-label">Courses</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_employees }}</div>
+            <div class="stat-label">Employees</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_attempts }}</div>
+            <div class="stat-label">Quiz Attempts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ pass_rate }}%</div>
+            <div class="stat-label">Pass Rate</div>
+        </div>
+    </div>
+
+    <div class="section-title">All Courses</div>
+
+    {% if courses %}
+    <div class="card-grid">
+        {% for course in courses %}
+        <a href="{{ url_for('admin_course_detail', course_id=course.id) }}" class="card" style="text-decoration:none;color:inherit;">
+            <div class="card-title">{{ course.title }}</div>
+            <div class="card-desc">{{ course.description or 'No description' }}</div>
+            <div class="card-meta">
+                <span>📦 {{ course.modules|length }} modules</span>
+                <span>👥 {{ course.enrollments|length }} enrolled</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📚</div>
+        <p>No courses yet. Create your first course to get started!</p>
+        <a href="{{ url_for('admin_create_course') }}" class="btn btn-primary">+ Create Course</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

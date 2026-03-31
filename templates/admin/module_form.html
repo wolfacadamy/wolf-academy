@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if module else 'New' }} Module — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="breadcrumb">
+        <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+        <span class="sep">›</span>
+        <a href="{{ url_for('admin_course_detail', course_id=course.id) }}">{{ course.title }}</a>
+        <span class="sep">›</span>
+        <span>{{ 'Edit Module' if module else 'New Module' }}</span>
+    </div>
+
+    <h1>{{ '✏️ Edit Module' if module else '📄 New Module' }}</h1>
+    <br>
+
+    <form method="POST">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:1.5rem;">
+            <div class="form-group">
+                <label for="title">Module Title</label>
+                <input type="text" id="title" name="title" class="form-control"
+                       placeholder="e.g., Introduction to Fire Safety"
+                       value="{{ module.title if module else '' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="order_index">Order</label>
+                <input type="number" id="order_index" name="order_index" class="form-control"
+                       style="width:100px;"
+                       value="{{ module.order_index if module else next_order }}" min="0">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Lesson Content (Markdown)</label>
+            <div class="editor-container">
+                <div class="editor-panel">
+                    <h3>✍️ Editor</h3>
+                    <textarea id="md-editor" name="content_md" class="form-control"
+                              placeholder="Write your lesson content in Markdown...&#10;&#10;# Heading&#10;&#10;Your lesson text here...&#10;&#10;- Bullet point&#10;- Another point&#10;&#10;> Important note&#10;&#10;**Bold text** and *italic text*">{{ module.content_md if module else '' }}</textarea>
+                </div>
+                <div class="preview-panel">
+                    <h3>👁 Preview</h3>
+                    <div id="md-preview" class="preview-content markdown-content">
+                        <p style="color:var(--text-muted);">Preview will appear here...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+            <button type="submit" class="btn btn-primary">
+                {{ '💾 Save Changes' if module else '✨ Create Module' }}
+            </button>
+            <a href="{{ url_for('admin_course_detail', course_id=course.id) }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

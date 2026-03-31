@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Course Quiz: {{ course.title }} — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+    <div class="breadcrumb">
+        <a href="{{ url_for('employee_dashboard') }}">My Courses</a>
+        <span class="sep">›</span>
+        <span>{{ course.title }}</span>
+        <span class="sep">›</span>
+        <span>Final Quiz</span>
+    </div>
+
+    <h1>Final Course Quiz</h1>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.3rem;margin-bottom:2rem;">
+        {{ course.title }}
+    </p>
+
+    <!-- Quiz Section -->
+    {% if questions %}
+    <div class="quiz-section">
+        {% if best_attempt and best_attempt.passed %}
+        <div class="card" style="border-color:rgba(62,207,142,0.3);background:var(--green-bg);margin-bottom:1.5rem;">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <span style="font-size:1.5rem;">✅</span>
+                <div>
+                    <strong style="color:var(--green);">You passed this course!</strong>
+                    <p style="color:var(--text-secondary);font-size:0.9rem;margin:0;">
+                        Best score: {{ best_attempt.score }}%
+                    </p>
+                </div>
+            </div>
+            <p style="color:var(--green);margin-top:1rem;font-weight:600;">
+                🎉 Congratulations on completing the course!
+            </p>
+        </div>
+
+        <details style="margin-top:1rem;">
+            <summary style="cursor:pointer;color:var(--text-muted);font-size:0.9rem;">Retake quiz anyway</summary>
+            <div style="margin-top:1rem;">
+        {% endif %}
+
+        <p style="color:var(--text-secondary);margin-bottom:1.5rem;">
+            Answer all questions below. You need <strong>70%</strong> or higher to pass.
+        </p>
+
+        <form id="quiz-form" method="POST" action="{{ url_for('employee_submit_course_quiz', course_id=course.id) }}">
+            {% for q in questions %}
+            <div class="question-card">
+                <div class="q-number">Question {{ loop.index }} of {{ questions|length }}</div>
+                <div class="q-text">{{ q.question_text }}</div>
+                <div class="option-group">
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="a" required>
+                        <span><strong>A.</strong> {{ q.option_a }}</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="b">
+                        <span><strong>B.</strong> {{ q.option_b }}</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="c">
+                        <span><strong>C.</strong> {{ q.option_c }}</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ q.id }}" value="d">
+                        <span><strong>D.</strong> {{ q.option_d }}</span>
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top:1rem;">
+                Submit Course Quiz →
+            </button>
+        </form>
+
+        {% if best_attempt and best_attempt.passed %}
+            </div>
+        </details>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="quiz-section">
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No quiz questions have been added to this course yet. Please contact your admin.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:2rem;">
+        <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary">← Back to My Courses</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ module.title }} — Wolf Academy{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+    <div class="breadcrumb">
+        <a href="{{ url_for('employee_dashboard') }}">My Courses</a>
+        <span class="sep">›</span>
+        <span>{{ course.title }}</span>
+        <span class="sep">›</span>
+        <span>{{ module.title }}</span>
+    </div>
+
+    <h1>{{ module.title }}</h1>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.3rem;margin-bottom:2rem;">
+        {{ course.title }}
+    </p>
+
+    <!-- Rendered Markdown Content -->
+    <div class="markdown-content">
+        {{ content_html|safe }}
+    </div>
+
+    <!-- Module Completion Section -->
+    <div class="quiz-section">
+        {% if completed %}
+        <div class="card" style="border-color:rgba(62,207,142,0.3);background:var(--green-bg);margin-bottom:1.5rem;">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <span style="font-size:1.5rem;">✅</span>
+                <div>
+                    <strong style="color:var(--green);">Module Completed!</strong>
+                    <p style="color:var(--text-secondary);font-size:0.9rem;margin:0;">
+                        You have read this lesson.
+                    </p>
+                </div>
+            </div>
+            {% if next_module %}
+            <a href="{{ url_for('employee_module', module_id=next_module.id) }}" class="btn btn-primary" style="margin-top:1rem;">
+                Continue to Next Module →
+            </a>
+            {% else %}
+            <a href="{{ url_for('employee_course_quiz', course_id=course.id) }}" class="btn btn-primary" style="margin-top:1rem;">
+                Proceed to Course Quiz →
+            </a>
+            {% endif %}
+        </div>
+        {% else %}
+        <form method="POST" action="{{ url_for('employee_complete_module', module_id=module.id) }}">
+            <button type="submit" class="btn btn-primary btn-block" style="padding:1rem;font-size:1.1rem;margin-top:2rem;">
+                ✓ Mark as Read & Continue
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div style="margin-top:2rem;">
+        <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary">← Back to My Courses</a>
+    </div>
+</div>
+{% endblock %}
